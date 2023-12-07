@@ -5,51 +5,51 @@ use aoc_lib::{aoc, color_eyre::eyre::Result, to_lines};
 static INPUT: &str = include_str!("../../inputs/day04");
 
 fn parse_game(line: &str) -> i64 {
-    let (_, nums) = line.split_once(":").unwrap();
-    let (win, ours) = nums.split_once("|").unwrap();
+	let (_, nums) = line.split_once(":").unwrap();
+	let (win, ours) = nums.split_once("|").unwrap();
 
-    let win: HashSet<i64> = win
-        .trim()
-        .split_ascii_whitespace()
-        .map(|n| n.parse().unwrap())
-        .collect();
-    let ours: HashSet<i64> = ours
-        .trim()
-        .split_ascii_whitespace()
-        .map(|n| n.parse().unwrap())
-        .collect();
+	let win: HashSet<i64> = win
+		.trim()
+		.split_ascii_whitespace()
+		.map(|n| n.parse().unwrap())
+		.collect();
+	let ours: HashSet<i64> = ours
+		.trim()
+		.split_ascii_whitespace()
+		.map(|n| n.parse().unwrap())
+		.collect();
 
-    win.intersection(&ours).count() as _
+	win.intersection(&ours).count() as _
 }
 
 fn part1(input: &str) -> Result<i64> {
-    let res = to_lines(input)
-        .filter_map(|line| match parse_game(line) {
-            0 => None,
-            exp => Some(i64::pow(2, exp as u32 - 1)),
-        })
-        .sum();
+	let res = to_lines(input)
+		.filter_map(|line| match parse_game(line) {
+			0 => None,
+			exp => Some(i64::pow(2, exp as u32 - 1)),
+		})
+		.sum();
 
-    Ok(res)
+	Ok(res)
 }
 
 fn part2(input: &str) -> Result<i64> {
-    let res = to_lines(input)
-        .scan(VecDeque::new(), |pile, line| {
-            let wins = parse_game(line);
-            let copies = pile.pop_front().unwrap_or(0) + 1;
-            for i in 0..wins as usize {
-                if let Some(e) = pile.get_mut(i) {
-                    *e += copies;
-                } else {
-                    pile.push_back(copies);
-                }
-            }
-            Some(copies)
-        })
-        .sum();
+	let res = to_lines(input)
+		.scan(VecDeque::new(), |pile, line| {
+			let wins = parse_game(line);
+			let copies = pile.pop_front().unwrap_or(0) + 1;
+			for i in 0..wins as usize {
+				if let Some(e) = pile.get_mut(i) {
+					*e += copies;
+				} else {
+					pile.push_back(copies);
+				}
+			}
+			Some(copies)
+		})
+		.sum();
 
-    Ok(res)
+	Ok(res)
 }
 
 #[allow(dead_code)]
@@ -63,7 +63,7 @@ Card 6: 31 18 13 56 72 | 74 77 10 23 35 67 36 11
 "#;
 
 aoc! {
-    INPUT :
-    part1 => (EX_INPUT_1) 13,
-    part2 => (EX_INPUT_1) 30
+	INPUT :
+	part1 => (EX_INPUT_1) 13,
+	part2 => (EX_INPUT_1) 30
 }
