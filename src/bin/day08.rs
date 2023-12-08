@@ -47,9 +47,9 @@ fn lcm(a: i64, b: i64) -> i64 {
 	a * b / gcd(a, b)
 }
 
-// This only works because the period of every path is the same,
-// and they all properly cycles.
-// I tried to be general at first because I naturally assumed they wouldn't,
+// This only works because every path properly cycles,
+// and every period is constant.
+// I tried to be general at first because I naturally assumed this wouldn't be the case,
 // but we can't have nice things.
 // I HATE AOC I HATE AOC I HATE AOC I HATE AOC I HATE AOC I HATE AOC
 // I HATE AOC I HATE AOC I HATE AOC I HATE AOC I HATE AOC I HATE AOC
