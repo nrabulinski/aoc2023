@@ -154,47 +154,19 @@ fn part1(input: &str) -> Result<i64> {
 	Ok(max_dist(&pipes, start_pos))
 }
 
-fn is_corner(curr: (i64, i64), pipes: &HashMap<(i64, i64), Vec<(i64, i64)>>) -> bool {
-	let adj = pipes.get(&curr).unwrap();
-	let (a, b) = (adj[0], adj[1]);
-	a.0 != b.0 && a.1 != b.1
-}
-
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Edge {
-	Left,
-	Right,
-	Top,
-	Bot,
-	// The boolean indicates whether the edge is "inner".
-	// An "outer" edge is comparable to a single pixel in the corner,
-	// while an "inner" edge is the corner + the edges it connects to.
-	TopLeft(bool),
-	TopRight(bool),
-	BotLeft(bool),
-	BotRight(bool),
-}
-
-impl Edge {
-	fn is_corner(&self) -> bool {
-		match self {
-			Edge::TopLeft(_) | Edge::TopRight(_) | Edge::BotLeft(_) | Edge::BotRight(_) => true,
-			_ => false,
-		}
-	}
-
-	fn is_inside(left: Edge, right: Edge) -> bool {
-		matches!(left, Edge::Left | Edge::TopLeft(_) | Edge::BotLeft(_))
-			&& matches!(right, Edge::Right | Edge::TopRight(_) | Edge::BotRight(_))
-	}
-
-	fn is_top(&self) -> bool {
-		matches!(self, Edge::Top | Edge::TopLeft(_) | Edge::TopRight(_))
-	}
-
-	fn is_right(&self) -> bool {
-		matches!(self, Edge::Right | Edge::TopRight(_) | Edge::BotRight(_))
-	}
+/// Check whether a pipe is a "cross" pipe.
+/// A "cross" pipe is any pipe that has a connection above it,
+/// meaning when we cross it, we're either entering the pipe loop or leaving it.
+/// The *above* is arbitrary, it could be below as well.
+/// It could even be left/right, if I went for vertical scanlines instead.
+///
+/// The point is to not count situations like: └┐ as entering and leaving the loop,
+/// hence we count └, but not ┐.
+fn is_cross((x, y): (i64, i64), pipes: &HashMap<(i64, i64), Vec<(i64, i64)>>) -> bool {
+	pipes
+		.get(&(x, y))
+		.map(|adj| adj.iter().any(|&(_, other_y)| other_y == y - 1))
+		.unwrap_or(false)
 }
 
 fn part2(input: &str) -> Result<i64> {
@@ -202,212 +174,18 @@ fn part2(input: &str) -> Result<i64> {
 
 	let main_loop = find_main_loop(&pipes, start_pos);
 
-	let &min_point = main_loop.iter().min_by_key(|&(x, y)| (y, x)).unwrap();
-	assert!(is_corner(min_point, &pipes));
-
-	let edges: HashMap<_, _> = std::iter::successors(
-		Some((min_point, Edge::TopLeft(true), None)),
-		|&(prev, typ, parent)| {
-			let adj = pipes.get(&prev).unwrap();
-
-			let next = parent
-				.and_then(|p| adj.iter().find(|&&n| n != p))
-				.copied()
-				.unwrap_or(adj[0]);
-
-			let new_typ = if is_corner(next, &pipes) {
-				// next element of the loop to decide the edge type
-				let child = pipes
-					.get(&next)
-					.unwrap()
-					.iter()
-					.find(|&&n| n != prev)
-					.unwrap();
-
-				// prev -> next -> child
-				// we know next is some form of a corner,
-				// so based on prev and child coordinates we find out what corner this is
-
-				match (
-					(next.0 - prev.0, next.1 - prev.1),
-					(child.0 - next.0, child.1 - next.1),
-				) {
-					(a, b) if a == b => unreachable!("Previous was a corner"),
-					((1, 0), (0, 1)) => {
-						if typ.is_top() {
-							Edge::TopRight(true)
-						} else {
-							Edge::BotLeft(false)
-						}
-					}
-					((1, 0), (0, -1)) => {
-						if typ.is_top() {
-							Edge::TopLeft(false)
-						} else {
-							Edge::TopRight(true)
-						}
-					}
-					((-1, 0), (0, 1)) => {
-						if typ.is_top() {
-							Edge::TopLeft(true)
-						} else {
-							Edge::BotRight(false)
-						}
-					}
-					((-1, 0), (0, -1)) => {
-						if typ.is_top() {
-							Edge::TopRight(false)
-						} else {
-							Edge::BotLeft(true)
-						}
-					}
-					((0, 1), (1, 0)) => {
-						if typ.is_right() {
-							Edge::TopRight(false)
-						} else {
-							Edge::BotLeft(true)
-						}
-					}
-					((0, 1), (-1, 0)) => {
-						if typ.is_right() {
-							Edge::BotRight(true)
-						} else {
-							Edge::TopLeft(false)
-						}
-					}
-					((0, -1), (1, 0)) => {
-						if typ.is_right() {
-							Edge::BotRight(false)
-						} else {
-							Edge::TopLeft(true)
-						}
-					}
-					((0, -1), (-1, 0)) => {
-						if typ.is_right() {
-							Edge::TopRight(true)
-						} else {
-							Edge::BotLeft(false)
-						}
-					}
-					_ => unreachable!(),
-				}
-			} else if typ.is_corner() {
-				match typ {
-					Edge::TopLeft(_) => {
-						if next.0 == prev.0 {
-							Edge::Left
-						} else {
-							Edge::Top
-						}
-					}
-					Edge::BotLeft(_) => {
-						if next.0 == prev.0 {
-							Edge::Left
-						} else {
-							Edge::Bot
-						}
-					}
-					Edge::TopRight(_) => {
-						if next.0 == prev.0 {
-							Edge::Right
-						} else {
-							Edge::Top
-						}
-					}
-					Edge::BotRight(_) => {
-						if next.0 == prev.0 {
-							Edge::Right
-						} else {
-							Edge::Bot
-						}
-					}
-					_ => unreachable!(),
-				}
-			} else {
-				typ
-			};
-
-			if next == min_point {
-				None
-			} else {
-				Some((next, new_typ, Some(prev)))
-			}
-		},
-	)
-	.map(|(pos, typ, _)| (pos, typ))
-	.collect();
-
-	let mut flodded = HashSet::<(i64, i64)>::new();
-
 	let mut res = 0;
-	{
-		let mut y = 0;
-
-		loop {
-			let mut x = 0;
-			loop {
-				if let Some(left) = edges.get(&(x, y)) {
-					let Some(next_x) =
-						(x + 1..width).find(|&new_x| edges.contains_key(&(new_x, y)))
-					else {
-						// no more pipes on this line
-						break;
-					};
-
-					if Edge::is_inside(*left, *edges.get(&(next_x, y)).unwrap()) {
-						for new_x in x + 1..next_x {
-							flodded.insert((new_x, y));
-						}
-						res += next_x - x - 1;
-					}
-
-					x = next_x - 1;
-				}
-
-				x += 1;
-				if x >= width {
-					break;
-				}
-			}
-
-			y += 1;
-			if y >= height {
-				break;
-			}
-		}
-	}
-
-	eprintln!("{}", input.trim());
-
 	for y in 0..height {
+		let mut inside = false;
 		for x in 0..width {
-			eprint!(
-				"{}",
-				if let Some(typ) = edges.get(&(x, y)) {
-					match typ {
-						Edge::Left => '▎',
-						Edge::Right => '🮇',
-						Edge::Top => '🮂',
-						Edge::Bot => '▂',
-						Edge::TopLeft(true) => '▛',
-						Edge::TopRight(true) => '▜',
-						Edge::BotLeft(true) => '▙',
-						Edge::BotRight(true) => '▟',
-						Edge::TopLeft(false) => '▘',
-						Edge::TopRight(false) => '▝',
-						Edge::BotLeft(false) => '▖',
-						Edge::BotRight(false) => '▗',
-					}
-				} else {
-					if flodded.contains(&(x, y)) {
-						'I'
-					} else {
-						'o'
-					}
+			if main_loop.contains(&(x, y)) {
+				if is_cross((x, y), &pipes) {
+					inside = !inside;
 				}
-			);
+			} else if inside {
+				res += 1;
+			}
 		}
-		eprintln!();
 	}
 
 	Ok(res)
