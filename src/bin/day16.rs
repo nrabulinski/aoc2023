@@ -1,37 +1,23 @@
 use std::collections::HashSet;
 
-use aoc_lib::{aoc, color_eyre::eyre::Result};
+use aoc_lib::{aoc, color_eyre::eyre::Result, grid::Grid};
 
 static INPUT: &str = include_str!("../../inputs/day16");
 
-fn valid_position((x, y): (i64, i64), width: i64, height: i64) -> bool {
-	x >= 0 && x < width && y >= 0 && y < height
-}
-
-fn laser(
-	input: &[u8],
-	direction: (i64, i64),
-	start_pos: (i64, i64),
-	width: i64,
-	height: i64,
-) -> usize {
+fn laser(grid: Grid<'_>, direction: (i64, i64), start_pos: (i64, i64)) -> usize {
 	let mut cycles = HashSet::new();
 	let mut dirs_pos = Vec::<((i64, i64), (i64, i64))>::new();
 	dirs_pos.push((direction, start_pos));
 
-	while dirs_pos
-		.iter()
-		.any(|&(_, pos)| valid_position(pos, width, height))
-	{
+	while dirs_pos.iter().any(|&(_, pos)| grid.is_valid_pos(pos)) {
 		for i in (0..dirs_pos.len()).rev() {
 			let (dir, pos) = dirs_pos[i];
-			if !valid_position(pos, width, height) || cycles.contains(&(dir, pos)) {
+			if !grid.is_valid_pos(pos) || cycles.contains(&(dir, pos)) {
 				continue;
 			}
 			cycles.insert((dir, pos));
-			let idx = pos.1 * (width + 1) + pos.0;
 
-			match input[idx as usize] {
+			match grid.get_pos(pos).unwrap() {
 				b'.' => (),
 				b'-' if dir.1 == 0 => (),
 				b'|' if dir.0 == 0 => (),
@@ -53,13 +39,13 @@ fn laser(
 
 					continue;
 				}
-				c => unreachable!("char: {}", c as char),
+				&c => unreachable!("char: {}", c as char),
 			}
 
 			dirs_pos[i].1 = (pos.0 + dirs_pos[i].0 .0, pos.1 + dirs_pos[i].0 .1);
 		}
 		for i in (0..dirs_pos.len()).rev() {
-			if !valid_position(dirs_pos[i].1, width, height) || cycles.contains(&dirs_pos[i]) {
+			if !grid.is_valid_pos(dirs_pos[i].1) || cycles.contains(&dirs_pos[i]) {
 				dirs_pos.remove(i);
 			}
 		}
@@ -73,45 +59,25 @@ fn laser(
 }
 
 fn part1(input: &str) -> Result<usize> {
-	let input = input.trim();
-	let line_width = input.lines().next().unwrap().len() + 1;
-	let height = input.len() / line_width + 1;
-	let width = line_width - 1;
-	let res = laser(
-		input.as_bytes(),
-		(1, 0),
-		(0, 0),
-		width as i64,
-		height as i64,
-	);
+	let grid = Grid::for_str(input).unwrap();
+	let res = laser(grid, (1, 0), (0, 0));
 
 	Ok(res)
 }
 
 fn part2(input: &str) -> Result<usize> {
-	let input = input.trim();
-	let line_width = input.lines().next().unwrap().len() + 1;
-	let height = input.len() / line_width + 1;
-	let width = line_width - 1;
+	let grid = Grid::for_str(input).unwrap();
 
-	let top = (0..width).map(|x| ((0, 1), (x as i64, 0)));
-	let bottom = (0..width).map(|x| ((0, -1), (x as i64, height as i64 - 1)));
-	let left = (0..height).map(|y| ((1, 0), (0, y as i64)));
-	let right = (0..height).map(|y| ((-1, 0), (width as i64 - 1, y as i64)));
+	let top = (0..grid.width()).map(|x| ((0, 1), (x, 0)));
+	let bottom = (0..grid.width()).map(|x| ((0, -1), (x, grid.height() - 1)));
+	let left = (0..grid.height()).map(|y| ((1, 0), (0, y)));
+	let right = (0..grid.height()).map(|y| ((-1, 0), (grid.width() - 1, y)));
 
 	let res = top
 		.chain(bottom)
 		.chain(left)
 		.chain(right)
-		.map(|(dir, start_pos)| {
-			laser(
-				input.as_bytes(),
-				dir,
-				start_pos,
-				width as i64,
-				height as i64,
-			)
-		})
+		.map(|(dir, start_pos)| laser(grid, dir, start_pos))
 		.max()
 		.unwrap();
 

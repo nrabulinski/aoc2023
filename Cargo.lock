@@ -29,7 +29,7 @@ dependencies = [
 [[package]]
 name = "aoc-lib"
 version = "0.1.0"
-source = "git+https://github.com/nrabulinski/aoc-utils.git#c7a8ed0a0b6b6944e58f0cc5f8374a05647f23be"
+source = "git+https://github.com/nrabulinski/aoc-utils.git#9aba2aa98fcee0de8df9331483b2916024e40f05"
 dependencies = [
  "color-eyre",
  "rangemap",
