@@ -1,68 +1,24 @@
-use std::{collections::HashSet, convert::identity, ops::Range};
+use std::{collections::HashSet, ops::Range};
 
-use aoc_lib::{aoc, color_eyre::eyre::Result, rangemap::RangeMap, regex::Regex};
+use aoc_lib::{aoc, color_eyre::eyre::Result, grid::Grid, rangemap::RangeMap, regex::Regex};
 
 static INPUT: &str = include_str!("../../inputs/day03");
 
-fn idx_to_pos(idx: usize, line_len: usize) -> (usize, usize) {
-	let x = idx % (line_len + 1);
-	let y = idx / (line_len + 1);
-	(x, y)
-}
-
-fn pos_to_idx(x: usize, y: usize, line_len: usize) -> usize {
-	y * (line_len + 1) + x
-}
-
 fn part1(input: &str) -> Result<i64> {
-	let input = input.trim();
-	let line_length = input.lines().next().unwrap().len();
-	let line_cnt = input.len() / line_length;
+	let grid = Grid::for_str(input).unwrap();
+
 	let re = Regex::new(r"\d+").unwrap();
-	let check_symbol = |idx| {
-		let b = input.as_bytes()[idx];
-		b != b'.' && (b < b'0' || b > b'9')
-	};
+	let check_symbol = |b: u8| b != b'.' && !b.is_ascii_digit();
+
 	let res = re
 		.find_iter(input)
 		.filter(|m| {
 			let Range { start, end } = m.range();
-			let start_pos = idx_to_pos(start, line_length);
-			let end_pos = idx_to_pos(end - 1, line_length);
+			let start_pos = grid.idx_to_pos(start).unwrap();
+			let end_pos = grid.idx_to_pos(end - 1).unwrap();
 
-			let at_left = start_pos.0 == 0;
-			let at_right = end_pos.0 == line_length - 1;
-			let at_top = start_pos.1 == 0;
-			let at_bot = start_pos.1 == line_cnt - 1;
-
-			let above = (!at_top)
-				.then(|| (start_pos.0..=end_pos.0).map(|x| (x, start_pos.1 - 1)))
-				.into_iter()
-				.flatten();
-			let below = (!at_bot)
-				.then(|| (start_pos.0..=end_pos.0).map(|x| (x, start_pos.1 + 1)))
-				.into_iter()
-				.flatten();
-			let left = (!at_left).then(|| (start_pos.0 - 1, start_pos.1));
-			let right = (!at_right).then(|| (end_pos.0 + 1, end_pos.1));
-			let top_left = (!at_top && !at_left).then(|| (start_pos.0 - 1, start_pos.1 - 1));
-			let top_right = (!at_top && !at_right).then(|| (end_pos.0 + 1, end_pos.1 - 1));
-			let bot_left = (!at_bot && !at_left).then(|| (start_pos.0 - 1, start_pos.1 + 1));
-			let bot_right = (!at_bot && !at_right).then(|| (end_pos.0 + 1, end_pos.1 + 1));
-
-			let pos_to_check = above
-				.chain(below)
-				.chain(left)
-				.chain(right)
-				.chain(top_left)
-				.chain(top_right)
-				.chain(bot_left)
-				.chain(bot_right);
-
-			pos_to_check
-				.map(|(x, y)| pos_to_idx(x, y, line_length))
-				.map(check_symbol)
-				.any(identity)
+			grid.adjacent_area(start_pos, end_pos)
+				.any(|pos| check_symbol(grid[pos]))
 		})
 		.map(|m| m.as_str().parse::<i64>().unwrap())
 		.sum();
@@ -71,9 +27,8 @@ fn part1(input: &str) -> Result<i64> {
 }
 
 fn part2(input: &str) -> Result<i64> {
-	let input = input.trim();
-	let line_length = input.lines().next().unwrap().len();
-	let line_cnt = input.len() / line_length;
+	let grid = Grid::for_str(input).unwrap();
+
 	let re = Regex::new(r"\d+").unwrap();
 	let mut num_map: RangeMap<_, i64> = re
 		.find_iter(input)
@@ -82,41 +37,18 @@ fn part2(input: &str) -> Result<i64> {
 
 	let gears = input
 		.as_bytes()
-		.into_iter()
+		.iter()
 		.enumerate()
 		.filter(|(_, &b)| b == b'*');
 
 	let mut res = 0;
 	for (gear, _) in gears {
-		let pos = idx_to_pos(gear, line_length);
-		let at_left = pos.0 == 0;
-		let at_right = pos.0 == line_length - 1;
-		let at_top = pos.1 == 0;
-		let at_bot = pos.1 == line_cnt - 1;
-
-		let top = (!at_top).then(|| (pos.0, pos.1 - 1));
-		let bot = (!at_bot).then(|| (pos.0, pos.1 + 1));
-		let left = (!at_left).then(|| (pos.0 - 1, pos.1));
-		let right = (!at_right).then(|| (pos.0 + 1, pos.1));
-		let top_left = (!at_top && !at_left).then(|| (pos.0 - 1, pos.1 - 1));
-		let top_right = (!at_top && !at_right).then(|| (pos.0 + 1, pos.1 - 1));
-		let bot_left = (!at_bot && !at_left).then(|| (pos.0 - 1, pos.1 + 1));
-		let bot_right = (!at_bot && !at_right).then(|| (pos.0 + 1, pos.1 + 1));
-
-		let pos_to_check = top
-			.into_iter()
-			.chain(bot)
-			.chain(left)
-			.chain(right)
-			.chain(top_left)
-			.chain(top_right)
-			.chain(bot_left)
-			.chain(bot_right);
+		let pos_to_check = grid.adjacent_pos(grid.idx_to_pos(gear).unwrap());
 
 		let part_nums: HashSet<_> = pos_to_check
-			.map(|(x, y)| pos_to_idx(x, y, line_length))
+			.map(|pos| grid.pos_to_idx(pos).unwrap())
 			.filter_map(|idx| num_map.get_key_value(&idx))
-			.map(|(r, &v)| (r.clone(), v as i64))
+			.map(|(r, &v)| (r.clone(), v))
 			.collect();
 
 		if part_nums.len() != 2 {
