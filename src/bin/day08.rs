@@ -7,13 +7,13 @@ static INPUT: &str = include_str!("../../inputs/day08");
 fn part1(input: &str) -> Result<i64> {
 	let mut input = to_lines(input);
 
-	let ins = input.next().unwrap().as_bytes().into_iter().cycle();
+	let ins = input.next().unwrap().as_bytes().iter().cycle();
 
 	let coll: HashMap<_, _> = input
 		.skip(1)
 		.map(|line| {
 			let (from, to) = line.split_once(" = ").unwrap();
-			let (left, right) = (&to[1..to.len() - 1]).split_once(", ").unwrap();
+			let (left, right) = to[1..to.len() - 1].split_once(", ").unwrap();
 
 			(from, (left, right))
 		})
@@ -65,7 +65,7 @@ fn part2(input: &str) -> Result<i64> {
 		.skip(1)
 		.map(|line| {
 			let (from, to) = line.split_once(" = ").unwrap();
-			let (left, right) = (&to[1..to.len() - 1]).split_once(", ").unwrap();
+			let (left, right) = to[1..to.len() - 1].split_once(", ").unwrap();
 
 			(from, (left, right))
 		})
@@ -73,7 +73,7 @@ fn part2(input: &str) -> Result<i64> {
 
 	let res = coll
 		.keys()
-		.filter(|node| node.ends_with("A"))
+		.filter(|node| node.ends_with('A'))
 		.map(|node| {
 			ins.iter()
 				.copied()
@@ -87,7 +87,7 @@ fn part2(input: &str) -> Result<i64> {
 					}
 					Some(*state)
 				})
-				.position(|node| node.ends_with("Z"))
+				.position(|node| node.ends_with('Z'))
 				.unwrap() as i64 + 1
 		})
 		.reduce(lcm)

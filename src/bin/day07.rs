@@ -22,7 +22,7 @@ fn part1(input: &str) -> Result<i64> {
 
 	let mut hands: Vec<_> = to_lines(input)
 		.map(|line| {
-			let (cards, bid) = line.split_once(" ").unwrap();
+			let (cards, bid) = line.split_once(' ').unwrap();
 			let bid: i64 = bid.parse().unwrap();
 			let (cards, cnt) = parse_hand(CARD_ORDER, cards.as_bytes().iter().copied());
 			let mut cnt: Vec<_> = cnt.into_iter().filter(|&c| c != 0).collect();
@@ -52,7 +52,7 @@ fn part2(input: &str) -> Result<i64> {
 
 	let mut hands: Vec<_> = to_lines(input)
 		.map(|line| {
-			let (cards, bid) = line.split_once(" ").unwrap();
+			let (cards, bid) = line.split_once(' ').unwrap();
 			let bid: i64 = bid.parse().unwrap();
 			let (cards, mut cnt) = parse_hand(CARD_ORDER, cards.as_bytes().iter().copied());
 			let joker_cnt = cnt[0];

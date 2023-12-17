@@ -12,8 +12,8 @@ fn find_res(time: i64, dist: i64) -> i64 {
 		.count() as i64
 }
 
-fn parse<'a>(input: &'a str) -> impl Iterator<Item = i64> + 'a {
-	let (_, nums) = input.split_once(":").unwrap();
+fn parse(input: &str) -> impl Iterator<Item = i64> + '_ {
+	let (_, nums) = input.split_once(':').unwrap();
 	nums.trim()
 		.split_ascii_whitespace()
 		.map(|n| n.parse().unwrap())
@@ -33,7 +33,7 @@ fn part1(input: &str) -> Result<i64> {
 }
 
 fn parse2(input: &str) -> i64 {
-	let (_, nums) = input.split_once(":").unwrap();
+	let (_, nums) = input.split_once(':').unwrap();
 	nums.trim()
 		.split_ascii_whitespace()
 		.collect::<String>()

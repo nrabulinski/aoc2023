@@ -90,8 +90,8 @@ fn part1(input: &str) -> Result<usize> {
 	let s = std::time::Instant::now();
 	let res = to_lines(input)
 		.map(|line| {
-			let (chars, nums) = line.split_once(" ").unwrap();
-			let nums: Vec<usize> = nums.split(",").map(|n| n.parse().unwrap()).collect();
+			let (chars, nums) = line.split_once(' ').unwrap();
+			let nums: Vec<usize> = nums.split(',').map(|n| n.parse().unwrap()).collect();
 			test_str(chars, &nums)
 		})
 		.sum();
@@ -103,8 +103,8 @@ fn part2(input: &str) -> Result<usize> {
 	let s = std::time::Instant::now();
 	let res = to_lines(input)
 		.map(|line| {
-			let (c, nums) = line.split_once(" ").unwrap();
-			let mut nums: Vec<usize> = nums.split(",").map(|n| n.parse().unwrap()).collect();
+			let (c, nums) = line.split_once(' ').unwrap();
+			let mut nums: Vec<usize> = nums.split(',').map(|n| n.parse().unwrap()).collect();
 			let n = nums.clone();
 			let mut chars = c.to_string();
 			for _ in 0..4 {

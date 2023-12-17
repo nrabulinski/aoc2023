@@ -3,7 +3,7 @@ use aoc_lib::{aoc, color_eyre::eyre::Result, to_lines};
 static INPUT: &str = include_str!("../../inputs/day01");
 
 fn map_digit(s: &str, dict: &[&str]) -> Option<i64> {
-	dict.into_iter()
+	dict.iter()
 		.position(|d| s.starts_with(d))
 		.map(|pos| pos as i64 + 1)
 }

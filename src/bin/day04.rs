@@ -5,8 +5,8 @@ use aoc_lib::{aoc, color_eyre::eyre::Result, to_lines};
 static INPUT: &str = include_str!("../../inputs/day04");
 
 fn parse_game(line: &str) -> i64 {
-	let (_, nums) = line.split_once(":").unwrap();
-	let (win, ours) = nums.split_once("|").unwrap();
+	let (_, nums) = line.split_once(':').unwrap();
+	let (win, ours) = nums.split_once('|').unwrap();
 
 	let win: HashSet<i64> = win
 		.trim()

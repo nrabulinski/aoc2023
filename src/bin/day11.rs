@@ -29,19 +29,17 @@ fn part1(input: &str) -> Result<usize> {
 	let galaxies: Vec<_> = grid
 		.iter()
 		.enumerate()
-		.map(|(y, row)| {
+		.flat_map(|(y, row)| {
 			row.iter()
 				.enumerate()
 				.filter_map(move |(x, &c)| if c == b'#' { Some((x, y)) } else { None })
 		})
-		.flatten()
 		.collect();
 
 	let mut res = 0;
 	for i in 0..galaxies.len() - 1 {
 		let (ax, ay) = galaxies[i];
-		for j in i..galaxies.len() {
-			let (bx, by) = galaxies[j];
+		for &(bx, by) in &galaxies[i..] {
 			let d = ax.abs_diff(bx) + ay.abs_diff(by);
 			res += d;
 		}
@@ -83,20 +81,17 @@ fn part2(input: &str) -> Result<i64> {
 	let galaxies: Vec<_> = grid
 		.iter()
 		.enumerate()
-		.map(|(y, row)| {
+		.flat_map(|(y, row)| {
 			row.iter()
 				.enumerate()
 				.filter_map(move |(x, &c)| if c == b'#' { Some((x, y)) } else { None })
 		})
-		.flatten()
 		.collect();
 
 	let mut res = 0;
 	for i in 0..galaxies.len() - 1 {
 		let (ax, ay) = galaxies[i];
-		for j in i..galaxies.len() {
-			let (bx, by) = galaxies[j];
-
+		for &(bx, by) in &galaxies[i..] {
 			let mut x = ax as i64;
 			let xd = if ax < bx { 1 } else { -1 };
 			while x != bx as i64 {

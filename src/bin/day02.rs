@@ -4,7 +4,7 @@ static INPUT: &str = include_str!("../../inputs/day02");
 
 fn str_to_game(s: &str) -> [i64; 3] {
 	s.split(", ").fold([0, 0, 0], |[r, g, b], curr| {
-		let (v, c) = curr.split_once(" ").unwrap();
+		let (v, c) = curr.split_once(' ').unwrap();
 		if c == "red" {
 			[r + v.parse::<i64>().unwrap(), g, b]
 		} else if c == "green" {
@@ -36,7 +36,7 @@ fn part1(input: &str) -> Result<i64> {
 		})
 		.filter(|(_, cubes_used)| {
 			cubes_used
-				.into_iter()
+				.iter()
 				.copied()
 				.zip(allowed_cubes)
 				.all(|(used, allowed)| used <= allowed)
@@ -49,7 +49,7 @@ fn part1(input: &str) -> Result<i64> {
 fn part2(input: &str) -> Result<i64> {
 	let ans = to_lines(input)
 		.map(parse_line)
-		.map(|game| game.into_iter().fold(1, |acc, curr| acc * curr))
+		.map(|game| game.into_iter().product::<i64>())
 		.sum();
 	Ok(ans)
 }

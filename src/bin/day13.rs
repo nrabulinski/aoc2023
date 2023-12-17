@@ -14,13 +14,12 @@ fn solve(input: &str, allowed_smudges: usize) -> i64 {
 					let x = x as usize;
 					group
 						.iter_rows()
-						.map(|row| {
+						.flat_map(|row| {
 							let left = row.iter().take(x);
 							let right = row.iter().skip(x);
 
 							left.rev().zip(right).filter(|(a, b)| a != b)
 						})
-						.flatten()
 						.has_n(allowed_smudges)
 				})
 				.unwrap_or(0);
@@ -30,13 +29,12 @@ fn solve(input: &str, allowed_smudges: usize) -> i64 {
 					let y = y as usize;
 					group
 						.iter_columns()
-						.map(|column| {
+						.flat_map(|column| {
 							let above = column.iter().take(y);
 							let below = column.iter().skip(y);
 
 							above.rev().zip(below).filter(|(a, b)| a != b)
 						})
-						.flatten()
 						.has_n(allowed_smudges)
 				})
 				.unwrap_or(0);
