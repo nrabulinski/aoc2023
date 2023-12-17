@@ -1,5 +1,3 @@
-
-
 use aoc_lib::{
 	aoc,
 	color_eyre::eyre::Result,

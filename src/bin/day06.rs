@@ -1,4 +1,3 @@
-#![feature(isqrt)]
 use aoc_lib::{aoc, color_eyre::eyre::Result, to_lines};
 
 static INPUT: &str = include_str!("../../inputs/day06");

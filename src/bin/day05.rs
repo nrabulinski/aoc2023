@@ -1,7 +1,6 @@
-#![feature(iter_array_chunks)]
 use std::mem::replace;
 
-use aoc_lib::{aoc, color_eyre::eyre::Result, to_lines};
+use aoc_lib::{aoc, color_eyre::eyre::Result, iter::IterExt, to_lines};
 
 static INPUT: &str = include_str!("../../inputs/day05");
 
@@ -58,7 +57,7 @@ fn part2(input: &str) -> Result<i64> {
 		.trim()
 		.split_ascii_whitespace()
 		.map(|s| s.parse().unwrap())
-		.array_chunks()
+		.arr_chunks()
 		.map(|[start, len]| (start, len))
 		.collect();
 
