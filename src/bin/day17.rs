@@ -34,15 +34,10 @@ fn solve(input: &str, min_moves: i64, max_moves: i64) -> i64 {
 
 		horizontal.chain(vertical).filter_map(move |(pos, d)| {
 			let diff = d.map(i64::signum);
-			let cost = std::iter::successors(Some(diff), |&prev| {
-				if prev == d {
-					None
-				} else {
-					Some(prev.add(&diff))
-				}
-			})
-			.map(|d| get_val(d.add(&(x, y))))
-			.try_fold(0, |acc, curr| Some(acc + curr?))?;
+			let cost =
+				std::iter::successors(Some(diff), |prev| (*prev != d).then_some(diff.add(prev)))
+					.map(|d| get_val(d.add(&(x, y))))
+					.try_fold(0, |acc, curr| Some(acc + curr?))?;
 			Some(((pos, diff), cost))
 		})
 	};
