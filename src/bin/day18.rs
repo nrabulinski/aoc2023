@@ -1,5 +1,8 @@
 //! NOTE: Point is (y, x) instead of the usual (x, y),
 //!       because we want them to be sorted by row.
+// TODO: Normalize ranges without allocations since we know they're sorted
+// TODO: Only allocate curr_points, nothing else should be needed
+// TODO: Try the shoelace formula with no allocations
 
 use std::{collections::BTreeSet, ops::RangeInclusive};
 
@@ -30,7 +33,13 @@ fn normalize_ranges(i: impl IntoIterator<Item = RangeInclusive<i64>>) -> Vec<Ran
 	})
 }
 
-fn solve(points: BTreeSet<Point>) -> i64 {
+fn solve(diffs: impl Iterator<Item = Point>) -> i64 {
+	let points: BTreeSet<_> = diffs
+		.scan((0, 0), |curr, diff| {
+			*curr = curr.add(&diff);
+			Some(*curr)
+		})
+		.collect();
 	let mut y_values: Vec<_> = points.iter().map(|&(y, _)| y).collect();
 	y_values.dedup();
 	let mut iter = points.into_iter().peekable();
@@ -76,52 +85,40 @@ fn solve(points: BTreeSet<Point>) -> i64 {
 	res
 }
 
-fn parse(line: &str) -> (Point, &str) {
-	let mut i = line.trim().split_ascii_whitespace();
-	let dir = i.next().unwrap();
-	let cnt: i64 = i.next().unwrap().parse().unwrap();
-	let dir = match dir {
-		"L" => (0, -cnt),
-		"U" => (-cnt, 0),
-		"D" => (cnt, 0),
-		"R" => (0, cnt),
-		_ => panic!(),
-	};
-	let color = i.next().unwrap();
-	let color = &color[1..color.len() - 1];
-	(dir, color)
-}
-
 fn part1(input: &str) -> Result<i64> {
-	let map: BTreeSet<_> = to_lines(input)
-		.map(parse)
-		.scan((0, 0), |curr, (diff, _)| {
-			*curr = curr.add(&diff);
-			Some(*curr)
-		})
-		.collect();
+	let map = to_lines(input).map(|line| {
+		let mut i = line.split_ascii_whitespace();
+		let dir = i.next().unwrap();
+		let cnt: i64 = i.next().unwrap().parse().unwrap();
+		match dir {
+			"L" => (0, -cnt),
+			"U" => (-cnt, 0),
+			"D" => (cnt, 0),
+			"R" => (0, cnt),
+			_ => panic!(),
+		}
+	});
 
 	Ok(solve(map))
 }
 
 fn part2(input: &str) -> Result<i64> {
-	let map: BTreeSet<_> = to_lines(input)
-		.map(parse)
-		.scan((0, 0), |curr, (.., hex)| {
-			let cnt = &hex[1..][..5];
-			let cnt = i64::from_str_radix(cnt, 16).unwrap();
+	let map = to_lines(input).map(|line| {
+		let mut i = line.split_ascii_whitespace();
+		let _dir = i.next().unwrap();
+		let _cnt = i.next().unwrap();
+		let hex = i.next().unwrap();
+		let cnt = &hex[2..][..5];
+		let cnt = i64::from_str_radix(cnt, 16).unwrap();
 
-			let diff = match hex.as_bytes()[6] {
-				b'0' => (0, cnt),
-				b'1' => (cnt, 0),
-				b'2' => (0, -cnt),
-				b'3' => (-cnt, 0),
-				_ => panic!(),
-			};
-			*curr = curr.add(&diff);
-			Some(*curr)
-		})
-		.collect();
+		match hex.as_bytes()[7] {
+			b'0' => (0, cnt),
+			b'1' => (cnt, 0),
+			b'2' => (0, -cnt),
+			b'3' => (-cnt, 0),
+			_ => panic!(),
+		}
+	});
 
 	Ok(solve(map))
 }
