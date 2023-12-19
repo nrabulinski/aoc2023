@@ -1,4 +1,7 @@
-use std::collections::{BTreeSet, HashMap};
+//! NOTE: Point is (y, x) instead of the usual (x, y),
+//!       because we want them to be sorted by row.
+
+use std::{collections::BTreeSet, ops::RangeInclusive};
 
 use aoc_lib::{
 	aoc,
@@ -10,8 +13,23 @@ use aoc_lib::{
 
 static INPUT: &str = include_str!("../../inputs/day18");
 
-// NOTE: Point is (y, x) instead of the usual (x, y),
-//       because we want them to be sorted by row.
+fn normalize_ranges(i: impl IntoIterator<Item = RangeInclusive<i64>>) -> Vec<RangeInclusive<i64>> {
+	let mut r: Vec<_> = i.into_iter().collect();
+	r.sort_unstable_by_key(|r| *r.start());
+
+	r.into_iter().fold(Vec::new(), |mut acc, curr| {
+		if acc.last().is_some_and(|prev| prev.contains(curr.start())) {
+			let last = acc.last_mut().unwrap();
+			let start = *last.start();
+			let end = *last.end().max(curr.end());
+			*last = start..=end;
+		} else {
+			acc.push(curr);
+		}
+		acc
+	})
+}
+
 fn solve(points: BTreeSet<Point>) -> i64 {
 	let mut y_values: Vec<_> = points.iter().map(|&(y, _)| y).collect();
 	y_values.dedup();
@@ -21,95 +39,69 @@ fn solve(points: BTreeSet<Point>) -> i64 {
 	let mut previous_y = None;
 	let mut curr_points = BTreeSet::<i64>::new();
 	for y in y_values {
-		let maybe_sum = previous_y
-			.take()
-			.map(|(prev_y, prev_sum)| {
-				let d = y - prev_y - 1;
-				res += d * prev_sum;
-				prev_sum
-			})
-			.unwrap_or(0);
-
-		for p in std::iter::from_fn(|| iter.next_if(move |&(next_y, _)| next_y == y))
-			.map(move |(_, x)| x)
-		{
-			if curr_points.contains(&p) {
-				curr_points.remove(&p);
-			} else {
-				curr_points.insert(p);
-			}
-		}
-
-		let next_sum = curr_points
+		let curr_ranges: Vec<_> = curr_points
 			.iter()
 			.arr_chunks()
-			.map(|[a, b]| b - a + 1)
-			.sum();
+			.map(|[&a, &b]| a..=b)
+			.collect();
+		let prev_sum: i64 = curr_ranges.iter().map(|r| *r.end() - *r.start() + 1).sum();
+		if let Some(prev_y) = previous_y {
+			let d = y - prev_y - 1;
+			res += d * prev_sum;
+		}
 
-		res += maybe_sum.max(next_sum);
+		let next_points: BTreeSet<_> =
+			std::iter::from_fn(|| iter.next_if(move |&(next_y, _)| next_y == y))
+				.map(move |(_, x)| x)
+				.collect();
 
-		previous_y = Some((y, next_sum));
+		let curr_row = normalize_ranges(
+			curr_ranges
+				.into_iter()
+				.chain(next_points.iter().arr_chunks().map(|[&a, &b]| a..=b)),
+		);
+		res += curr_row
+			.into_iter()
+			.map(|r| *r.end() - *r.start() + 1)
+			.sum::<i64>();
+
+		curr_points = curr_points
+			.symmetric_difference(&next_points)
+			.copied()
+			.collect();
+
+		previous_y = Some(y);
 	}
 
 	res
 }
 
-fn is_cross((x, y): Point, pipes: &HashMap<Point, [Point; 2]>) -> bool {
-	pipes
-		.get(&(x, y))
-		.map(|adj| adj.iter().any(|&(_, other_y)| other_y == y - 1))
-		.unwrap_or(false)
-}
-
-fn parse(line: &str) -> (Point, i64, &str) {
+fn parse(line: &str) -> (Point, &str) {
 	let mut i = line.trim().split_ascii_whitespace();
-	let dir = match i.next().unwrap() {
-		"L" => (-1, 0),
-		"U" => (0, -1),
-		"D" => (0, 1),
-		"R" => (1, 0),
+	let dir = i.next().unwrap();
+	let cnt: i64 = i.next().unwrap().parse().unwrap();
+	let dir = match dir {
+		"L" => (0, -cnt),
+		"U" => (-cnt, 0),
+		"D" => (cnt, 0),
+		"R" => (0, cnt),
 		_ => panic!(),
 	};
-	let cnt = i.next().unwrap().parse().unwrap();
 	let color = i.next().unwrap();
 	let color = &color[1..color.len() - 1];
-	(dir, cnt, color)
+	(dir, color)
 }
 
-fn part1(input: &str) -> Result<usize> {
-	let mut map = HashMap::new();
+fn part1(input: &str) -> Result<i64> {
+	let map: BTreeSet<_> = to_lines(input)
+		.map(parse)
+		.scan((0, 0), |curr, (diff, _)| {
+			*curr = curr.add(&diff);
+			Some(*curr)
+		})
+		.collect();
 
-	let mut curr = (0, 0);
-	let mut top_left = curr;
-	let mut bottom_right = curr;
-	for (dir, cnt, _) in to_lines(input).map(parse) {
-		for _ in 0..cnt {
-			let next = curr.add(&dir);
-			top_left = (top_left.0.min(next.0), top_left.1.min(next.1));
-			bottom_right = (bottom_right.0.max(next.0), bottom_right.1.max(next.1));
-
-			map.entry(curr).or_insert([(0, 0); 2])[1] = next;
-			map.entry(next).or_insert([(0, 0); 2])[0] = curr;
-
-			curr = next;
-		}
-	}
-
-	let mut res = map.len();
-	for y in top_left.1..=bottom_right.1 {
-		let mut inside = false;
-		for x in top_left.0..=bottom_right.0 {
-			if map.contains_key(&(x, y)) {
-				if is_cross((x, y), &map) {
-					inside = !inside;
-				}
-			} else if inside {
-				res += 1;
-			}
-		}
-	}
-
-	Ok(res)
+	Ok(solve(map))
 }
 
 fn part2(input: &str) -> Result<i64> {
