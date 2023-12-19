@@ -1,4 +1,7 @@
-use std::collections::{HashMap, VecDeque};
+use std::{
+	collections::{HashMap, VecDeque},
+	str::FromStr,
+};
 
 use aoc_lib::{aoc, color_eyre::eyre::Result, to_lines};
 
@@ -19,95 +22,6 @@ impl Res {
 			s => Res::Send(s.to_string()),
 		}
 	}
-}
-
-fn parse_ins(
-	line: &str,
-) -> (
-	String,
-	Vec<Box<dyn Fn(&HashMap<String, i64>) -> Option<Res>>>,
-) {
-	let line = line.trim();
-	let idx = line.find('{').unwrap();
-	let name = &line[..idx];
-	let ins = &line[idx + 1..line.len() - 1];
-
-	let ins /*: Vec<Box<dyn Fn(&HashMap<String, i64>) -> Res>> */ = ins
-		.split(',')
-		.map(|instr| {
-			if let Some(idx) = instr.find(':') {
-				let res = Res::for_str(&instr[idx + 1..]);
-				let cmd = &instr[..idx];
-
-				let f = if let Some((prop, val)) = cmd.split_once('>') {
-					let prop = prop.to_string();
-					let val = val.parse().unwrap();
-					let f = move |props: &HashMap<String, i64>| props.get(&prop).map(|&v| v > val).unwrap_or(false).then(|| res.clone());
-					Box::new(f) as _
-				} else if let Some((prop, val)) = cmd.split_once('<') {
-					let prop = prop.to_string();
-					let val = val.parse().unwrap();
-					let f = move |props: &HashMap<String, i64>| props.get(&prop).map(|&v| v < val).unwrap_or(false).then(|| res.clone());
-					Box::new(f) as _
-				} else { unreachable!() };
-				f
-			} else {
-				let res = Res::for_str(instr);
-				let f = move |_: &_| Some(res.clone());
-				Box::new(f) as _
-			}
-		})
-		.collect();
-
-	(name.to_string(), ins)
-}
-
-fn parse_obj(line: &str) -> HashMap<String, i64> {
-	let line = line.trim();
-
-	line[1..line.len() - 1]
-		.split(',')
-		.map(|prop| {
-			let (name, val) = prop.split_once('=').unwrap();
-			(name.to_string(), val.parse().unwrap())
-		})
-		.collect()
-}
-
-fn part1(input: &str) -> Result<i64> {
-	let (ins, objs) = {
-		let mut i = input.trim().split("\n\n");
-		(i.next().unwrap(), i.next().unwrap())
-	};
-
-	let ins: HashMap<_, _> = to_lines(ins).map(parse_ins).collect();
-
-	let res = to_lines(objs)
-		.map(parse_obj)
-		.filter(|obj| {
-			let mut curr = "in".to_string();
-
-			'outer: loop {
-				let tests = ins.get(&curr).unwrap();
-
-				for f in tests {
-					match f(obj) {
-						Some(Res::Send(next)) => {
-							curr = next;
-							continue 'outer;
-						}
-						Some(Res::Accept) => return true,
-						Some(Res::Reject) => return false,
-						None => continue,
-					}
-				}
-				unreachable!()
-			}
-		})
-		.map(|obj| obj.into_values().sum::<i64>())
-		.sum();
-
-	Ok(res)
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -146,6 +60,11 @@ impl ValRange {
 
 	fn count(&self) -> u64 {
 		self.lt - self.gt - 1
+	}
+
+	fn value(&self) -> u64 {
+		assert_eq!(self.gt + 1, self.lt - 1);
+		self.gt + 1
 	}
 
 	fn reverse(&self) -> Self {
@@ -195,6 +114,109 @@ impl Obj {
 			_ => unreachable!(),
 		})
 	}
+}
+
+impl FromStr for Obj {
+	type Err = ();
+
+	fn from_str(s: &str) -> std::result::Result<Self, Self::Err> {
+		let mut res = Obj::default();
+		let line = s.trim();
+
+		for prop in line[1..line.len() - 1].split(',') {
+			let (name, val) = prop.split_once('=').unwrap();
+			let name = name.as_bytes()[0];
+			let val: u64 = val.parse().unwrap();
+			let range = ValRange {
+				gt: val - 1,
+				lt: val + 1,
+			};
+			res = res.combine_prop(name, range).unwrap();
+		}
+
+		Ok(res)
+	}
+}
+
+type RangeWithTarget = (Option<(u8, ValRange)>, Res);
+fn parse_ins(line: &str) -> (String, Vec<RangeWithTarget>) {
+	let line = line.trim();
+	let idx = line.find('{').unwrap();
+	let name = &line[..idx];
+	let ins = &line[idx + 1..line.len() - 1];
+
+	let ins: Vec<_> = ins
+		.split(',')
+		.map(|instr| {
+			if let Some(idx) = instr.find(':') {
+				let res = Res::for_str(&instr[idx + 1..]);
+				let cmd = &instr[..idx];
+
+				let f = if let Some((prop, val)) = cmd.split_once('>') {
+					let prop = prop.as_bytes()[0];
+					let val = val.parse().unwrap();
+					(prop, ValRange::new_greater_than(val))
+				} else if let Some((prop, val)) = cmd.split_once('<') {
+					let prop = prop.as_bytes()[0];
+					let val = val.parse().unwrap();
+					(prop, ValRange::new_less_than(val))
+				} else {
+					unreachable!()
+				};
+				(Some(f), res)
+			} else {
+				let res = Res::for_str(instr);
+				(None, res)
+			}
+		})
+		.collect();
+
+	(name.to_string(), ins)
+}
+
+fn part1(input: &str) -> Result<u64> {
+	let (ins, objs) = {
+		let mut i = input.trim().split("\n\n");
+		(i.next().unwrap(), i.next().unwrap())
+	};
+
+	let ins: HashMap<_, _> = to_lines(ins).map(parse_ins).collect();
+
+	let res = to_lines(objs)
+		.map(Obj::from_str)
+		.filter_map(|obj| {
+			let obj = obj.unwrap();
+			let mut curr = "in";
+
+			'outer: loop {
+				let tests = ins.get(curr).unwrap();
+
+				for (test, target) in tests {
+					if test
+						.map(|(prop, range)| obj.combine_prop(prop, range).is_none())
+						.unwrap_or(false)
+					{
+						continue;
+					}
+					match target {
+						Res::Send(next) => {
+							curr = next;
+							continue 'outer;
+						}
+						Res::Accept => {
+							return Some(
+								obj.x.value() + obj.m.value() + obj.a.value() + obj.s.value(),
+							)
+						}
+						Res::Reject => return None,
+					}
+				}
+				unreachable!()
+			}
+		})
+		.sum();
+
+	Ok(res)
 }
 
 fn part2(input: &str) -> Result<u64> {
