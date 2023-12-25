@@ -23,6 +23,8 @@
           [
             fenix.packages.${pkgs.system}.complete.toolchain # rust toolchain
             aoc-utils.packages.${pkgs.system}.aoc-cli
+            pkgs.pkg-config
+            pkgs.z3
           ]
           ++ pkgs.lib.optionals pkgs.stdenv.isDarwin [pkgs.libiconv];
       };
